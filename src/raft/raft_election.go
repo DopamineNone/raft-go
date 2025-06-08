@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+const (
+	electionTimeoutMin time.Duration = 250 * time.Millisecond
+	electionTimeoutMax time.Duration = 400 * time.Millisecond
+	electionRandRange                = int64(electionTimeoutMax - electionTimeoutMin)
+)
+
 func (rf *Raft) resetElectionTimeLocked() {
 	rf.electionStart = time.Now()
 	rf.electionTimeout = electionTimeoutMin + time.Duration(rand.Int63()%electionRandRange)

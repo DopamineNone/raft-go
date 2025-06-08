@@ -34,7 +34,7 @@ func (rf *Raft) applicationTicker() {
 
 		rf.mu.Lock()
 		if !snapPendingApply {
-			LOG(rf.me, rf.currentTerm, DLog, "-> Apply %d entries", len(entries))
+			LOG(rf.me, rf.currentTerm, DLog, "-> Apply %d entries, Commit Index: %d", len(entries), rf.commitIndex)
 			rf.lastApplied += len(entries)
 		} else {
 			rf.lastApplied = rf.log.snapLastIndex

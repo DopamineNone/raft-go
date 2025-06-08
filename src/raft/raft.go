@@ -27,14 +27,6 @@ import (
 )
 
 const (
-	electionTimeoutMin time.Duration = 250 * time.Millisecond
-	electionTimeoutMax time.Duration = 400 * time.Millisecond
-	electionRandRange                = int64(electionTimeoutMax - electionTimeoutMin)
-
-	replicationInterval = 70 * time.Millisecond
-)
-
-const (
 	InvalidTerm  = 0
 	InvalidIndex = 0
 )
@@ -151,6 +143,12 @@ func (rf *Raft) GetState() (int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	return rf.currentTerm, rf.role == Leader
+}
+
+func (rf *Raft) GetRaftStateSize() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	return rf.persister.RaftStateSize()
 }
 
 // example code to send a RequestVote RPC to a server.

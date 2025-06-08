@@ -1,9 +1,12 @@
 package raft
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
+
+const replicationInterval = 30 * time.Millisecond
 
 type LogEntry struct {
 	Term         int
@@ -23,6 +26,12 @@ type AppendEntriesArgs struct {
 	LeaderCommit int // leader's commit index
 }
 
+func (args *AppendEntriesArgs) String() string {
+	return fmt.Sprintf("Leader-%d, T%d, Prev:[%d]T%d, (%d, %d], CommitIdx: %d",
+		args.LeaderID, args.Term, args.PrevLogIndex, args.PrevLogTerm,
+		args.PrevLogIndex, args.PrevLogIndex+len(args.Entries), args.LeaderCommit)
+}
+
 type AppendEntriesReply struct {
 	Term    int
 	Success bool
@@ -31,11 +40,15 @@ type AppendEntriesReply struct {
 	ConflictTerm  int
 }
 
+func (reply *AppendEntriesReply) String() string {
+	return fmt.Sprintf("T%d, Sucess: %v, ConflictTerm: [%d]T%d", reply.Term, reply.Success, reply.ConflictIndex, reply.ConflictTerm)
+}
+
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	LOG(rf.me, rf.currentTerm, DLog, "AppendEntries from S%d, T%d", args.LeaderID, args.Term)
+	LOG(rf.me, rf.currentTerm, DLog, "AppendEntries from S%d, T%d, content: %v", args.LeaderID, args.Term, args)
 
 	reply.Term = rf.currentTerm
 	reply.Success = false
@@ -49,12 +62,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		rf.becomeFollowerLocked(args.Term)
 	}
 
-	defer func() {
-		rf.resetElectionTimeLocked()
-		//if !reply.Success {
-		//
-		//}
-	}()
+	defer rf.resetElectionTimeLocked()
 
 	if args.PrevLogIndex >= rf.log.size() {
 		reply.ConflictIndex = rf.log.size()
@@ -84,7 +92,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 }
 
 func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
+	LOG(rf.me, rf.currentTerm, DLog, "AppendEntries to S%d, %v", server, args)
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	LOG(rf.me, rf.currentTerm, DLog, "-> S%d, AppendEntries, %v", server, reply)
 	return ok
 }
 
@@ -166,6 +176,7 @@ func (rf *Raft) startReplication(term int) bool {
 		// update commit
 		majorityMatched := rf.getMajorityMatchedLocked()
 		if majorityMatched > rf.commitIndex && rf.log.at(majorityMatched).Term == term {
+			LOG(rf.me, rf.currentTerm, DApply, "Leader update the commit index %d->%d", rf.commitIndex, majorityMatched)
 			rf.commitIndex = majorityMatched
 			rf.applyCond.Signal()
 		}
