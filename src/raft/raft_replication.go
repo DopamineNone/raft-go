@@ -70,6 +70,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		LOG(rf.me, rf.currentTerm, DLog, "-> S%d, Reject, PrevLogIndex out of bound", args.LeaderID)
 		return
 	}
+
+	if args.PrevLogIndex < rf.log.snapLastIndex {
+		reply.ConflictTerm = rf.log.snapLastTerm
+		reply.ConflictIndex = rf.log.snapLastIndex
+		LOG(rf.me, rf.currentTerm, DLog2, "<- S%d, Reject log, Follower log truncated in %d", args.LeaderID, rf.log.snapLastIndex)
+		return
+	}
+
 	targetTerm := rf.log.at(args.PrevLogIndex).Term
 	if args.PrevLogTerm != targetTerm {
 		reply.ConflictTerm = targetTerm
