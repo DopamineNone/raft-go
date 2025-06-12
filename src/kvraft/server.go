@@ -70,8 +70,8 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 		Key:           args.Key,
 		Value:         args.Value,
 		OperationType: getOperationType(args.Op),
-		ClientID:      args.ClientId,
-		SeqID:         args.SeqId,
+		ClientId:      args.ClientId,
+		SeqId:         args.SeqId,
 	})
 	if !isLeader {
 		reply.Err = ErrWrongLeader
@@ -168,13 +168,13 @@ func (kv *KVServer) applyTask() {
 				// apply operation to kv state machine
 				op := msg.Command.(Op)
 				var opReply *OpReply
-				if op.OperationType != OpGet && kv.isRequestDuplicateLocked(op.ClientID, op.SeqID) {
-					opReply = kv.deduplicateTable[op.ClientID].Reply
+				if op.OperationType != OpGet && kv.isRequestDuplicateLocked(op.ClientId, op.SeqId) {
+					opReply = kv.deduplicateTable[op.ClientId].Reply
 				} else {
 					opReply = kv.applyToStateMachine(op)
 					if op.OperationType != OpGet {
-						kv.deduplicateTable[op.ClientID] = &LastOperationInfo{
-							SeqID: op.SeqID,
+						kv.deduplicateTable[op.ClientId] = &LastOperationInfo{
+							SeqID: op.SeqId,
 							Reply: opReply,
 						}
 					}

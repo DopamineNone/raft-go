@@ -1,4 +1,4 @@
-package kvraft
+package shardkv
 
 import "time"
 
@@ -7,11 +7,19 @@ const (
 	ErrNoKey       = "ErrNoKey"
 	ErrWrongLeader = "ErrWrongLeader"
 	ErrTimeout     = "ErrTimeout"
+	ErrWrongGroup  = "ErrWrongGroup"
+	ErrWrongConfig = "ErrWrongConfig"
+	ErrNotReady    = "ErrNotReady"
 )
 
 type Err string
 
-const ClientRequestTimeout = 500 * time.Millisecond
+const (
+	ClientRequestTimeout = 500 * time.Millisecond
+	FetchConfigInterval  = 100 * time.Millisecond
+	ShardMigrateInterval = 50 * time.Millisecond
+	ShardGCInterval
+)
 
 type GetArgs struct {
 	Key string
@@ -72,7 +80,56 @@ type OpReply struct {
 	Err   Err
 }
 
+var (
+	OKReply = &OpReply{Err: OK}
+)
+
 type LastOperationInfo struct {
 	SeqID int64
 	Reply *OpReply
+}
+
+func (info *LastOperationInfo) copy() *LastOperationInfo {
+	return &LastOperationInfo{
+		SeqID: info.SeqID,
+		Reply: &OpReply{
+			Value: info.Reply.Value,
+			Err:   info.Reply.Err,
+		},
+	}
+}
+
+type RaftCommandType uint8
+
+const (
+	ClientOperation RaftCommandType = iota
+	ConfigurationChange
+	ShardMigration
+	ShardGC
+)
+
+type RaftCommand struct {
+	CommandType RaftCommandType
+	Data        interface{}
+}
+
+type ShardStatus uint8
+
+const (
+	Normal ShardStatus = iota
+	MoveIn
+	MoveOut
+	GC
+)
+
+type ShardOperationArgs struct {
+	ConfigNum int
+	ShardIds  []int
+}
+
+type ShardOperationReply struct {
+	Err       Err
+	ConfigNum int
+	ShardData map[int]map[string]string
+	DupTable  map[int64]*LastOperationInfo
 }

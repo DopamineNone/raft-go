@@ -8,11 +8,11 @@ import (
 
 type Clerk struct {
 	servers  []*labrpc.ClientEnd
-	leaderID int
+	leaderId int
 
-	// clientID + seqID as unique key for command
-	clientID int64
-	seqID    int64
+	// clientId + seqId as unique key for command
+	clientId int64
+	seqId    int64
 }
 
 // nrand: get random number
@@ -25,9 +25,9 @@ func nrand() int64 {
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	return &Clerk{
 		servers:  servers,
-		leaderID: 0,
-		clientID: nrand(),
-		seqID:    0,
+		leaderId: 0,
+		clientId: nrand(),
+		seqId:    0,
 	}
 }
 
@@ -36,9 +36,9 @@ func (clerk *Clerk) Get(key string) string {
 
 	for {
 		var reply GetReply
-		ok := clerk.servers[clerk.leaderID].Call("KVServer.Get", &args, &reply)
+		ok := clerk.servers[clerk.leaderId].Call("KVServer.Get", &args, &reply)
 		if !ok || reply.Err == ErrWrongLeader || reply.Err == ErrTimeout {
-			clerk.leaderID = (clerk.leaderID + 1) % len(clerk.servers)
+			clerk.leaderId = (clerk.leaderId + 1) % len(clerk.servers)
 			continue
 		}
 		return reply.Value
@@ -50,17 +50,17 @@ func (clerk *Clerk) PutAppend(key string, value string, op string) {
 		Key:      key,
 		Value:    value,
 		Op:       op,
-		ClientId: clerk.clientID,
-		SeqId:    clerk.seqID,
+		ClientId: clerk.clientId,
+		SeqId:    clerk.seqId,
 	}
 	for {
 		var reply PutAppendReply
-		ok := clerk.servers[clerk.leaderID].Call("KVServer.PutAppend", &args, &reply)
+		ok := clerk.servers[clerk.leaderId].Call("KVServer.PutAppend", &args, &reply)
 		if !ok || reply.Err == ErrWrongLeader || reply.Err == ErrTimeout {
-			clerk.leaderID = (clerk.leaderID + 1) % len(clerk.servers)
+			clerk.leaderId = (clerk.leaderId + 1) % len(clerk.servers)
 			continue
 		}
-		clerk.seqID++
+		clerk.seqId++
 		return
 	}
 }
